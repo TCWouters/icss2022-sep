@@ -45,5 +45,12 @@ ASSIGNMENT_OPERATOR: ':=';
 
 
 //--- PARSER: ---
-stylesheet: EOF;
+stylesheet: (ID_IDENT | CLASS_IDENT | LOWER_IDENT | CAPITAL_IDENT) OPEN_BRACE internal WS? CLOSE_BRACE;
+
+internal: color* backgroundcolor* width? height?;
+
+color: 'color' COLON COLOR SEMICOLON;
+backgroundcolor: 'background-color' COLON COLOR SEMICOLON;
+width: 'width' COLON PIXELSIZE SEMICOLON;
+height: 'height' COLON PIXELSIZE SEMICOLON;
 
