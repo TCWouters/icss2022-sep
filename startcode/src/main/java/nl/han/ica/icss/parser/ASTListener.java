@@ -11,6 +11,7 @@ import nl.han.ica.icss.ast.operations.SubtractOperation;
 import nl.han.ica.icss.ast.selectors.ClassSelector;
 import nl.han.ica.icss.ast.selectors.IdSelector;
 import nl.han.ica.icss.ast.selectors.TagSelector;
+import nl.han.ica.icss.ast.types.ExpressionType;
 
 /**
  * This class extracts the ICSS Abstract Syntax Tree from the Antlr Parse tree.
@@ -255,7 +256,8 @@ VariableAssignment variableAssignment = new VariableAssignment();
 
     @Override
     public void exitElse_clause(ICSSParser.Else_clauseContext ctx) {
-        ElseClause elseClause = (ElseClause)currentContainer.pop();
+        ElseClause elseClause = (ElseClause) currentContainer.pop();
         currentContainer.peek().addChild(elseClause);
     }
+
 }

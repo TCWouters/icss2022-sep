@@ -42,17 +42,22 @@ MUL: '*';
 ASSIGNMENT_OPERATOR: ':=';
 
 
+//--- ADDED LEXER ---
+LEFT_PAREN: '(';
+RIGHT_PAREN: ')';
+
 //--- PARSER: ---
 stylesheet: (variable_assignment | stylerule)*;
 stylerule: selector OPEN_BRACE (declaration | if_clause)* CLOSE_BRACE;
 
 // declaration
-declaration: property COLON (literal | variable_reference) operation* SEMICOLON;
+declaration: property COLON expression SEMICOLON;
 property: LOWER_IDENT;
 
+
 // variables
-variable_assignment: variable_reference ASSIGNMENT_OPERATOR literal SEMICOLON;
-variable_reference: LOWER_IDENT | CAPITAL_IDENT;
+variable_assignment: variable_reference ASSIGNMENT_OPERATOR expression SEMICOLON;
+variable_reference: CAPITAL_IDENT;
 
 // selectors
 selector: tag_selector | class_selector | id_selector;
@@ -60,11 +65,10 @@ class_selector: CLASS_IDENT;
 id_selector: ID_IDENT;
 tag_selector: LOWER_IDENT;
 
-// operations
-operation: (add_operation | multiply_operation | subtract_operation) literal;
-add_operation: PLUS;
-multiply_operation: MUL;
-subtract_operation: MIN;
+// Expressions
+expression: expression MUL expression #multiply_operation| expression PLUS expression #add_operation
+            | expression MIN expression #subtract_operation | literal #literal_operation
+             | variable_reference #variable_reference_operation |  LEFT_PAREN expression RIGHT_PAREN #parentheses_operation;
 
 // literals
 literal: bool_literal | color_literal | percentage_literal | scalar_literal | pixel_literal;
