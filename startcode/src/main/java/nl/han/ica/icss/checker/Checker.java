@@ -1,14 +1,12 @@
 package nl.han.ica.icss.checker;
 
 import nl.han.ica.icss.ast.*;
-import nl.han.ica.icss.ast.literals.ColorLiteral;
+import nl.han.ica.icss.ast.literals.*;
 import nl.han.ica.icss.ast.operations.AddOperation;
 import nl.han.ica.icss.ast.types.ExpressionType;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
-
 
 public class Checker {
 
@@ -16,60 +14,113 @@ public class Checker {
 
     public void check(AST ast) {
         variableTypes = new LinkedList<>();
+        variableTypes.push(new HashMap<>());
         checkStylesheet(ast.root);
+        variableTypes.pop();
     }
 
     private void checkStylesheet(Stylesheet sheet) {
-        for(ASTNode child : sheet.getChildren()) {
+        for (ASTNode child : sheet.getChildren()) {
             if (child instanceof VariableAssignment) {
-                checkVariableAssignment((VariableAssignment) sheet.getChildren().get(0));
-            } else if(child instanceof Stylerule) {
-                Checkstylerule((Stylerule) sheet.getChildren().get(0));
+                checkVariableAssignment((VariableAssignment) child);
+            } else if (child instanceof Stylerule) {
+                checkStylerule((Stylerule) child);
             }
         }
     }
 
-    private void Checkstylerule(Stylerule rule) {
-        for(ASTNode child : rule.getChildren()) {
-            if(child instanceof Declaration) {
+    private void checkStylerule(Stylerule rule) {
+        for (ASTNode child : rule.getChildren()) {
+            if (child instanceof Declaration) {
                 checkDeclaration((Declaration) child);
             }
         }
     }
 
     private void checkVariableAssignment(VariableAssignment variableAssignment) {
-        for(ASTNode child : variableAssignment.getChildren()) {
-            if(child instanceof VariableReference) {
-                checkVariableReference((VariableReference) child);
+        String name = null;
+        ExpressionType type = null;
+
+        for (ASTNode child : variableAssignment.getChildren()) {
+            if (child instanceof VariableReference) {
+                name = ((VariableReference) child).name;
+            } else {
+                type = inferExpressionType(child);
             }
+        }
+
+        if (name != null) {
+            variableTypes.peek().put(name, type);
         }
     }
 
-
-    private String checkVariableReference(VariableReference reference) {
-        return reference.name;
+    private ExpressionType getVariableType(String name) {
+        for (HashMap<String, ExpressionType> scope : variableTypes) {
+            if (scope.containsKey(name)) {
+                return scope.get(name);
+            }
+        }
+        return null;
     }
 
+    private ExpressionType inferExpressionType(ASTNode node) {
+        if (node instanceof ColorLiteral) {
+            return ExpressionType.COLOR;
+        }
+        if (node instanceof BoolLiteral) {
+            return ExpressionType.BOOL;
+        }
+        if (node instanceof PercentageLiteral) {
+            return ExpressionType.PERCENTAGE;
+        }
+        if (node instanceof PixelLiteral) {
+            return ExpressionType.PIXEL;
+        }
+        if (node instanceof ScalarLiteral) {
+            return ExpressionType.SCALAR;
+        }
+        if (node instanceof VariableReference) {
+            return getVariableType(((VariableReference) node).name);
+        }
+        if (node instanceof AddOperation) {
+            ExpressionType first = null;
+            for (ASTNode child : node.getChildren()) {
+                ExpressionType t = inferExpressionType(child);
+                if (t == null) return null;
+                if (first == null) first = t;
+                else if (first != t) return null;
+            }
+            return first;
+        }
+        return null;
+    }
+
+    private boolean checkColor(ExpressionType type) {
+        return ExpressionType.COLOR.equals(type);
+    }
 
     private void checkDeclaration(Declaration declaration) {
+        ExpressionType expressionType = inferExpressionType(declaration.expression);
+        boolean isColor = checkColor(expressionType);
+
         switch (declaration.property.name) {
             case "width":
-                if (declaration.expression instanceof ColorLiteral) {
+                if (isColor) {
                     declaration.setError("Property 'width': color not allowed");
                 }
                 break;
             case "color":
-                if (!(declaration.expression instanceof ColorLiteral)) {
+                if (expressionType != ExpressionType.COLOR) {
                     declaration.setError("Property 'color': only colors allowed");
                 }
                 break;
             case "background-color":
-                if (!(declaration.expression instanceof ColorLiteral)) {
+                if (expressionType != ExpressionType.COLOR) {
                     declaration.setError("Property 'background-color': only colors allowed");
                 }
                 break;
             case "height":
-                if (declaration.expression instanceof ColorLiteral) {
+                if (isColor) {
                     declaration.setError("Property 'height': color not allowed");
                 }
                 break;
@@ -78,6 +129,4 @@ public class Checker {
                 break;
         }
     }
-
-
 }

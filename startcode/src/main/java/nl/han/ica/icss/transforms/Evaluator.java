@@ -2,9 +2,7 @@ package nl.han.ica.icss.transforms;
 
 import nl.han.ica.datastructures.IHANLinkedList;
 import nl.han.ica.icss.ast.*;
-import nl.han.ica.icss.ast.literals.PercentageLiteral;
-import nl.han.ica.icss.ast.literals.PixelLiteral;
-import nl.han.ica.icss.ast.literals.ScalarLiteral;
+import nl.han.ica.icss.ast.literals.*;
 import nl.han.ica.icss.ast.operations.AddOperation;
 import nl.han.ica.icss.ast.operations.MultiplyOperation;
 import nl.han.ica.icss.ast.operations.SubtractOperation;
@@ -44,11 +42,38 @@ public class Evaluator implements Transform {
     }
 
     private Literal evaluateExpression(Expression expression) {
-        if(expression instanceof PixelLiteral){
-            return (PixelLiteral) expression;
-        } else if(expression instanceof AddOperation) {
-            return evalAddOperation((AddOperation) expression);
+        switch (expression.getClass().getSimpleName()) {
+            case "PixelLiteral":
+                return (PixelLiteral) expression;
+            case "AddOperation":
+                return evalAddOperation((AddOperation) expression);
+            case "SubtractOperation":
+                return evalSubtractOperation((SubtractOperation) expression);
+            case "MultiplyOperation":
+                return evalMultiplyOperation((MultiplyOperation) expression);
+            case "PercentageLiteral":
+                return (PercentageLiteral) expression;
+            case "ScalarLiteral":
+                return (ScalarLiteral) expression;
+            case "BooleanLiteral":
+                return (BoolLiteral) expression;
+            case "colorLiteral":
+                return (ColorLiteral) expression;
+            default:
+                return null;
         }
+    }
+
+    private Literal evalMultiplyOperation(MultiplyOperation expression) {
+        if(evaluateExpression(expression.lhs) instanceof ScalarLiteral | evaluateExpression(expression.rhs) instanceof ScalarLiteral) {
+            ScalarLiteral left = (ScalarLiteral) evaluateExpression(expression.lhs);
+            PixelLiteral right = (PixelLiteral) evaluateExpression(expression.rhs);
+            return new PixelLiteral(left.value * right.value);
+        }
+        return null;
+    }
+
+    private Literal evalSubtractOperation(SubtractOperation expression) {
         return null;
     }
 
@@ -57,4 +82,6 @@ public class Evaluator implements Transform {
         PixelLiteral right = (PixelLiteral) evaluateExpression(expression.rhs);
         return new PixelLiteral(left.value + right.value);
     }
+
+
 }
