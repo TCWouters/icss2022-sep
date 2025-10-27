@@ -3,6 +3,8 @@ package nl.han.ica.icss.checker;
 import nl.han.ica.icss.ast.*;
 import nl.han.ica.icss.ast.literals.*;
 import nl.han.ica.icss.ast.operations.AddOperation;
+import nl.han.ica.icss.ast.operations.MultiplyOperation;
+import nl.han.ica.icss.ast.operations.SubtractOperation;
 import nl.han.ica.icss.ast.types.ExpressionType;
 
 import java.util.HashMap;
@@ -82,16 +84,10 @@ public class Checker {
         if (node instanceof VariableReference) {
             return getVariableType(((VariableReference) node).name);
         }
-        if (node instanceof AddOperation) {
-            ExpressionType first = null;
-            for (ASTNode child : node.getChildren()) {
-                ExpressionType t = inferExpressionType(child);
-                if (t == null) return null;
-                if (first == null) first = t;
-                else if (first != t) return null;
-            }
-            return first;
+        if (node instanceof Operation) {
+            return inferOperationType(node);
         }
+
         return null;
     }
 
@@ -129,4 +125,50 @@ public class Checker {
                 break;
         }
     }
+
+
+
+    private ExpressionType inferOperationType(ASTNode node) {
+        if (!(node instanceof Operation)) return null;
+
+        if (node.getChildren().size() != 2) {
+            node.setError("Operation must have exactly two operands.");
+            return null;
+        }
+
+        ASTNode leftNode = node.getChildren().get(0);
+        ASTNode rightNode = node.getChildren().get(1);
+
+        ExpressionType leftType = inferExpressionType(leftNode);
+        ExpressionType rightType = inferExpressionType(rightNode);
+
+        if (leftType == null || rightType == null) return null;
+
+        // Check plus and minus
+        if (node instanceof AddOperation || node instanceof SubtractOperation) {
+            if (leftType != rightType) {
+                node.setError("Operands of + or - must be of the same type. Found: "
+                        + leftType + " and " + rightType);
+                return null;
+            }
+            return leftType; // resultaat heeft hetzelfde type
+        }
+
+        // Check multiply
+        if (node instanceof MultiplyOperation) {
+            boolean leftScalar = leftType == ExpressionType.SCALAR;
+            boolean rightScalar = rightType == ExpressionType.SCALAR;
+
+            if (leftScalar && !rightScalar) return rightType;    // scalar * value
+            if (!leftScalar && rightScalar) return leftType;    // value * scalar
+            if (leftScalar && rightScalar) return ExpressionType.SCALAR; // scalar * scalar
+
+            node.setError("One operand of * must be a scalar. Found: " + leftType + " * " + rightType);
+            return null;
+        }
+        
+        node.setError("Unknown operation type: " + node.getClass().getSimpleName());
+        return null;
+    }
+
 }
