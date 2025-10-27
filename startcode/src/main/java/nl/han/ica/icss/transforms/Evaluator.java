@@ -76,7 +76,7 @@ public class Evaluator implements Transform {
                 return (ScalarLiteral) expression;
             case "BooleanLiteral":
                 return (BoolLiteral) expression;
-            case "colorLiteral":
+            case "ColorLiteral":
                 return (ColorLiteral) expression;
             case "VariableReference":
                 VariableReference reference = (VariableReference) expression;

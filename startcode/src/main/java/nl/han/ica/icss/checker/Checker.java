@@ -142,7 +142,9 @@ public class Checker {
         ExpressionType leftType = inferExpressionType(leftNode);
         ExpressionType rightType = inferExpressionType(rightNode);
 
-        if (leftType == null || rightType == null) return null;
+        if (leftType == null || rightType == null) {
+            return null;
+        }
 
         // Check plus and minus
         if (node instanceof AddOperation || node instanceof SubtractOperation) {
@@ -166,7 +168,7 @@ public class Checker {
             node.setError("One operand of * must be a scalar. Found: " + leftType + " * " + rightType);
             return null;
         }
-        
+
         node.setError("Unknown operation type: " + node.getClass().getSimpleName());
         return null;
     }
