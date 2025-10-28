@@ -1,12 +1,12 @@
 package nl.han.ica.icss.transforms;
 
-import nl.han.ica.datastructures.IHANLinkedList;
 import nl.han.ica.icss.ast.*;
 import nl.han.ica.icss.ast.literals.*;
 import nl.han.ica.icss.ast.operations.AddOperation;
 import nl.han.ica.icss.ast.operations.MultiplyOperation;
 import nl.han.ica.icss.ast.operations.SubtractOperation;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -38,8 +38,8 @@ public class Evaluator implements Transform {
         }
     }
 
+
     private Literal getVariableValue(String name) {
-        if (variableValues == null) return null;
         for (HashMap<String, Literal> scope : variableValues) {
             if (scope.containsKey(name)) {
                 return scope.get(name);
@@ -48,19 +48,74 @@ public class Evaluator implements Transform {
         return null;
     }
 
+
+
+
     private void applyStylerule(Stylerule rule) {
-        for(ASTNode child : rule.getChildren()) {
-            if(child instanceof Declaration) {
+        ArrayList<ASTNode> newBody = new ArrayList<>();
+
+        for (ASTNode child : rule.body) {
+            if (child instanceof Declaration) {
                 applyDeclaration((Declaration) child);
+                newBody.add(child);
+            } else if (child instanceof IfClause) {
+                resolveAndReplaceIfClause((IfClause) child, newBody);
+            } else {
+                newBody.add(child);
+            }
+        }
+        rule.body = newBody;
+    }
+
+    private void resolveAndReplaceIfClause(IfClause ifClause, ArrayList<ASTNode> newBody) {
+        // Evalueer de conditie van de IfClause
+        Literal condition = evaluateExpression(ifClause.conditionalExpression);
+
+        if (condition instanceof BoolLiteral) {
+            BoolLiteral boolCondition = (BoolLiteral) condition;
+
+            if (boolCondition.value) {
+                // Als de conditie TRUE is, voeg de body van de if-clause toe
+                for (ASTNode child : ifClause.body) {
+                    if (child instanceof Declaration) {
+                        applyDeclaration((Declaration) child);
+                        newBody.add(child);
+                    } else if (child instanceof IfClause) {
+                        resolveAndReplaceIfClause((IfClause) child, newBody);
+                    } else {
+                        newBody.add(child);
+                    }
+                }
+            } else {
+                // Als de conditie FALSE is, voeg de body van de elseClause toe (indien aanwezig)
+                if (ifClause.elseClause != null) {
+                    for (ASTNode child : ifClause.elseClause.body) {
+                        if (child instanceof Declaration) {
+                            applyDeclaration((Declaration) child);
+                            newBody.add(child);
+                        } else if (child instanceof IfClause) {
+                            resolveAndReplaceIfClause((IfClause) child, newBody);
+                        } else {
+                            newBody.add(child);
+                        }
+                    }
+                }
+                // Als er geen elseClause is, doen we verder met de rest van de body
             }
         }
     }
 
+
+
+
+
     private void applyDeclaration(Declaration node) {
         node.expression = evaluateExpression(node.expression);
+
     }
 
     private Literal evaluateExpression(Expression expression) {
+
         switch (expression.getClass().getSimpleName()) {
             case "PixelLiteral":
                 return (PixelLiteral) expression;
@@ -74,7 +129,7 @@ public class Evaluator implements Transform {
                 return (PercentageLiteral) expression;
             case "ScalarLiteral":
                 return (ScalarLiteral) expression;
-            case "BooleanLiteral":
+            case "BoolLiteral":
                 return (BoolLiteral) expression;
             case "ColorLiteral":
                 return (ColorLiteral) expression;
@@ -85,6 +140,7 @@ public class Evaluator implements Transform {
                 return null;
         }
     }
+
 
     private Literal evalSubtractOperation(SubtractOperation expression) {
         Literal leftLit = evaluateExpression(expression.lhs);
