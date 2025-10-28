@@ -48,7 +48,7 @@ RIGHT_PAREN: ')';
 
 //--- PARSER: ---
 stylesheet: (variable_assignment | stylerule)*;
-stylerule: selector OPEN_BRACE (declaration | if_clause)* CLOSE_BRACE;
+stylerule: selector OPEN_BRACE (variable_assignment | declaration | if_clause)* CLOSE_BRACE;
 
 // declaration
 declaration: property COLON expression SEMICOLON;
@@ -56,7 +56,7 @@ property: LOWER_IDENT;
 
 
 // variables
-variable_assignment: variable_reference ASSIGNMENT_OPERATOR expression SEMICOLON;
+variable_assignment: variable_reference (ASSIGNMENT_OPERATOR expression)? SEMICOLON;
 variable_reference: CAPITAL_IDENT;
 
 // selectors

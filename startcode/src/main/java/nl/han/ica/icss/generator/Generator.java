@@ -40,7 +40,7 @@ public class Generator {
         } else if (declaration.expression instanceof nl.han.ica.icss.ast.literals.PercentageLiteral) {
             value = ((nl.han.ica.icss.ast.literals.PercentageLiteral) declaration.expression).value + "%";
         } else {
-            value = declaration.expression.toString(); // fallback
+            value = declaration.expression.toString();
         }
 
         return "  " + declaration.property.name + ": " + value + ";\n";

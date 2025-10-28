@@ -141,7 +141,6 @@ public class Evaluator implements Transform {
     }
 
 
-
     private Literal multiplyPixels(Literal leftLit, Literal rightLit) {
         PixelLiteral pixel = (PixelLiteral) leftLit;
         ScalarLiteral scalar = (ScalarLiteral) rightLit;

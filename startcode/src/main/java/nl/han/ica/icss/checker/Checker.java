@@ -16,6 +16,7 @@ public class Checker {
 
     public void check(AST ast) {
         variableTypes = new LinkedList<>();
+        // Global scope
         variableTypes.push(new HashMap<>());
         checkStylesheet(ast.root);
         variableTypes.pop();
@@ -32,29 +33,40 @@ public class Checker {
     }
 
     private void checkStylerule(Stylerule rule) {
-        for (ASTNode child : rule.getChildren()) {
-            if (child instanceof Declaration) {
-                checkDeclaration((Declaration) child);
-            }
-        }
+        checkScopedBlock(rule);
     }
 
-    private void checkVariableAssignment(VariableAssignment variableAssignment) {
-        String name = null;
-        ExpressionType type = null;
+    private void checkIfClause(IfClause ifClause) {
+        checkScopedBlock(ifClause);
+    }
 
-        for (ASTNode child : variableAssignment.getChildren()) {
-            if (child instanceof VariableReference) {
-                name = ((VariableReference) child).name;
-            } else {
-                type = inferExpressionType(child);
+    private void checkScopedBlock(ASTNode block) {
+        // Nieuwe scope voor dit blok
+        variableTypes.push(new HashMap<>());
+
+        for (ASTNode child : block.getChildren()) {
+            if (child instanceof VariableAssignment) {
+                checkVariableAssignment((VariableAssignment) child);
+            } else if (child instanceof Declaration) {
+                checkDeclaration((Declaration) child);
+            } else if (child instanceof IfClause) {
+                checkIfClause((IfClause) child);
             }
         }
 
+        // Scope verlaten
+        variableTypes.pop();
+    }
+
+
+    private void checkVariableAssignment(VariableAssignment variableAssignment) {
+        String name = variableAssignment.name.name;
+        ExpressionType type = inferExpressionType(variableAssignment.expression);
         if (name != null) {
             variableTypes.peek().put(name, type);
         }
     }
+
 
     private ExpressionType getVariableType(String name) {
         for (HashMap<String, ExpressionType> scope : variableTypes) {
@@ -66,24 +78,21 @@ public class Checker {
     }
 
     private ExpressionType inferExpressionType(ASTNode node) {
-        if (node instanceof ColorLiteral) {
-            return ExpressionType.COLOR;
-        }
-        if (node instanceof BoolLiteral) {
-            return ExpressionType.BOOL;
-        }
-        if (node instanceof PercentageLiteral) {
-            return ExpressionType.PERCENTAGE;
-        }
-        if (node instanceof PixelLiteral) {
-            return ExpressionType.PIXEL;
-        }
-        if (node instanceof ScalarLiteral) {
-            return ExpressionType.SCALAR;
-        }
+        if (node instanceof ColorLiteral) return ExpressionType.COLOR;
+        if (node instanceof BoolLiteral) return ExpressionType.BOOL;
+        if (node instanceof PercentageLiteral) return ExpressionType.PERCENTAGE;
+        if (node instanceof PixelLiteral) return ExpressionType.PIXEL;
+        if (node instanceof ScalarLiteral) return ExpressionType.SCALAR;
+
         if (node instanceof VariableReference) {
-            return getVariableType(((VariableReference) node).name);
+            String varName = ((VariableReference) node).name;
+            ExpressionType type = getVariableType(varName);
+            if (type == null) {
+                node.setError("Variable '" + varName + "' is not defined in this scope");
+            }
+            return type;
         }
+
         if (node instanceof Operation) {
             return inferOperationType(node);
         }
@@ -94,30 +103,26 @@ public class Checker {
     private boolean checkColor(ExpressionType type) {
         return ExpressionType.COLOR.equals(type);
     }
-
     private void checkDeclaration(Declaration declaration) {
         ExpressionType expressionType = inferExpressionType(declaration.expression);
+
+        if (expressionType == null) {
+            return; // don't check property type
+        }
+
         boolean isColor = checkColor(expressionType);
 
         switch (declaration.property.name) {
             case "width":
+            case "height":
                 if (isColor) {
-                    declaration.setError("Property 'width': color not allowed");
+                    declaration.setError("Property '" + declaration.property.name + "': color not allowed");
                 }
                 break;
             case "color":
-                if (expressionType != ExpressionType.COLOR) {
-                    declaration.setError("Property 'color': only colors allowed");
-                }
-                break;
             case "background-color":
                 if (expressionType != ExpressionType.COLOR) {
-                    declaration.setError("Property 'background-color': only colors allowed");
-                }
-                break;
-            case "height":
-                if (isColor) {
-                    declaration.setError("Property 'height': color not allowed");
+                    declaration.setError("Property '" + declaration.property.name + "': only colors allowed");
                 }
                 break;
             default:
@@ -127,12 +132,11 @@ public class Checker {
     }
 
 
-
     private ExpressionType inferOperationType(ASTNode node) {
         if (!(node instanceof Operation)) return null;
 
         if (node.getChildren().size() != 2) {
-            node.setError("Operation must have exactly two operands.");
+            node.setError("Operation must have exactly two literals.");
             return null;
         }
 
@@ -146,31 +150,28 @@ public class Checker {
             return null;
         }
 
-        // Check plus and minus
         if (node instanceof AddOperation || node instanceof SubtractOperation) {
             if (leftType != rightType) {
-                node.setError("Operands of + or - must be of the same type. Found: "
+                node.setError("Literals of + or - must be of the same type. Found: "
                         + leftType + " and " + rightType);
                 return null;
             }
-            return leftType; // resultaat heeft hetzelfde type
+            return leftType;
         }
 
-        // Check multiply
         if (node instanceof MultiplyOperation) {
             boolean leftScalar = leftType == ExpressionType.SCALAR;
             boolean rightScalar = rightType == ExpressionType.SCALAR;
 
-            if (leftScalar && !rightScalar) return rightType;    // scalar * value
-            if (!leftScalar && rightScalar) return leftType;    // value * scalar
-            if (leftScalar && rightScalar) return ExpressionType.SCALAR; // scalar * scalar
+            if (leftScalar && !rightScalar) return rightType;
+            if (!leftScalar && rightScalar) return leftType;
+            if (leftScalar && rightScalar) return ExpressionType.SCALAR;
 
-            node.setError("One operand of * must be a scalar. Found: " + leftType + " * " + rightType);
+            node.setError("One literal of * must be a scalar. Found: " + leftType + " * " + rightType);
             return null;
         }
 
         node.setError("Unknown operation type: " + node.getClass().getSimpleName());
         return null;
     }
-
 }
