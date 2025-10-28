@@ -33,18 +33,23 @@ public class Checker {
     }
 
     private void checkStylerule(Stylerule rule) {
-        checkScopedBlock(rule);
+        checkNextScope(rule);
     }
 
     private void checkIfClause(IfClause ifClause) {
-        checkScopedBlock(ifClause);
+        checkNextScope(ifClause);
+
+        ExpressionType expressionType = checkExpressionType(ifClause.conditionalExpression);
+        if (expressionType != ExpressionType.BOOL) {
+            ifClause.setError("If condition must be of type BOOL. Found: " + expressionType);
+        }
     }
 
-    private void checkScopedBlock(ASTNode block) {
+    private void checkNextScope(ASTNode node) {
         // Nieuwe scope voor dit blok
         variableTypes.push(new HashMap<>());
 
-        for (ASTNode child : block.getChildren()) {
+        for (ASTNode child : node.getChildren()) {
             if (child instanceof VariableAssignment) {
                 checkVariableAssignment((VariableAssignment) child);
             } else if (child instanceof Declaration) {
@@ -61,7 +66,7 @@ public class Checker {
 
     private void checkVariableAssignment(VariableAssignment variableAssignment) {
         String name = variableAssignment.name.name;
-        ExpressionType type = inferExpressionType(variableAssignment.expression);
+        ExpressionType type = checkExpressionType(variableAssignment.expression);
         if (name != null) {
             variableTypes.peek().put(name, type);
         }
@@ -77,12 +82,22 @@ public class Checker {
         return null;
     }
 
-    private ExpressionType inferExpressionType(ASTNode node) {
-        if (node instanceof ColorLiteral) return ExpressionType.COLOR;
-        if (node instanceof BoolLiteral) return ExpressionType.BOOL;
-        if (node instanceof PercentageLiteral) return ExpressionType.PERCENTAGE;
-        if (node instanceof PixelLiteral) return ExpressionType.PIXEL;
-        if (node instanceof ScalarLiteral) return ExpressionType.SCALAR;
+    private ExpressionType checkExpressionType(ASTNode node) {
+        if (node instanceof ColorLiteral) {
+            return ExpressionType.COLOR;
+        }
+        if (node instanceof BoolLiteral){
+            return ExpressionType.BOOL;
+        }
+        if (node instanceof PercentageLiteral){
+            return ExpressionType.PERCENTAGE;
+        }
+        if (node instanceof PixelLiteral){
+            return ExpressionType.PIXEL;
+        }
+        if (node instanceof ScalarLiteral){
+            return ExpressionType.SCALAR;
+        }
 
         if (node instanceof VariableReference) {
             String varName = ((VariableReference) node).name;
@@ -94,7 +109,7 @@ public class Checker {
         }
 
         if (node instanceof Operation) {
-            return inferOperationType(node);
+            return checkOperationType(node);
         }
 
         return null;
@@ -104,10 +119,10 @@ public class Checker {
         return ExpressionType.COLOR.equals(type);
     }
     private void checkDeclaration(Declaration declaration) {
-        ExpressionType expressionType = inferExpressionType(declaration.expression);
+        ExpressionType expressionType = checkExpressionType(declaration.expression);
 
         if (expressionType == null) {
-            return; // don't check property type
+            return;
         }
 
         boolean isColor = checkColor(expressionType);
@@ -132,7 +147,7 @@ public class Checker {
     }
 
 
-    private ExpressionType inferOperationType(ASTNode node) {
+    private ExpressionType checkOperationType(ASTNode node) {
         if (!(node instanceof Operation)) return null;
 
         if (node.getChildren().size() != 2) {
@@ -143,8 +158,8 @@ public class Checker {
         ASTNode leftNode = node.getChildren().get(0);
         ASTNode rightNode = node.getChildren().get(1);
 
-        ExpressionType leftType = inferExpressionType(leftNode);
-        ExpressionType rightType = inferExpressionType(rightNode);
+        ExpressionType leftType = checkExpressionType(leftNode);
+        ExpressionType rightType = checkExpressionType(rightNode);
 
         if (leftType == null || rightType == null) {
             return null;
@@ -163,9 +178,15 @@ public class Checker {
             boolean leftScalar = leftType == ExpressionType.SCALAR;
             boolean rightScalar = rightType == ExpressionType.SCALAR;
 
-            if (leftScalar && !rightScalar) return rightType;
-            if (!leftScalar && rightScalar) return leftType;
-            if (leftScalar && rightScalar) return ExpressionType.SCALAR;
+            if (leftScalar && !rightScalar){
+                return rightType;
+            }
+            if (!leftScalar && rightScalar){
+                return leftType;
+            }
+            if (leftScalar && rightScalar){
+                return ExpressionType.SCALAR;
+            }
 
             node.setError("One literal of * must be a scalar. Found: " + leftType + " * " + rightType);
             return null;
