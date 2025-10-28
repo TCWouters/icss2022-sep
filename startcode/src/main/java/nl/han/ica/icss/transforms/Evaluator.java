@@ -38,7 +38,6 @@ public class Evaluator implements Transform {
         }
     }
 
-
     private Literal getVariableValue(String name) {
         for (HashMap<String, Literal> scope : variableValues) {
             if (scope.containsKey(name)) {
@@ -47,9 +46,6 @@ public class Evaluator implements Transform {
         }
         return null;
     }
-
-
-
 
     private void applyStylerule(Stylerule rule) {
         ArrayList<ASTNode> newBody = new ArrayList<>();
@@ -68,14 +64,12 @@ public class Evaluator implements Transform {
     }
 
     private void resolveAndReplaceIfClause(IfClause ifClause, ArrayList<ASTNode> newBody) {
-        // Evalueer de conditie van de IfClause
         Literal condition = evaluateExpression(ifClause.conditionalExpression);
 
         if (condition instanceof BoolLiteral) {
             BoolLiteral boolCondition = (BoolLiteral) condition;
 
             if (boolCondition.value) {
-                // Als de conditie TRUE is, voeg de body van de if-clause toe
                 for (ASTNode child : ifClause.body) {
                     if (child instanceof Declaration) {
                         applyDeclaration((Declaration) child);
@@ -86,9 +80,7 @@ public class Evaluator implements Transform {
                         newBody.add(child);
                     }
                 }
-            } else {
-                // Als de conditie FALSE is, voeg de body van de elseClause toe (indien aanwezig)
-                if (ifClause.elseClause != null) {
+            } else if (ifClause.elseClause != null) {
                     for (ASTNode child : ifClause.elseClause.body) {
                         if (child instanceof Declaration) {
                             applyDeclaration((Declaration) child);
@@ -99,19 +91,12 @@ public class Evaluator implements Transform {
                             newBody.add(child);
                         }
                     }
-                }
-                // Als er geen elseClause is, doen we verder met de rest van de body
             }
         }
     }
 
-
-
-
-
     private void applyDeclaration(Declaration node) {
         node.expression = evaluateExpression(node.expression);
-
     }
 
     private Literal evaluateExpression(Expression expression) {

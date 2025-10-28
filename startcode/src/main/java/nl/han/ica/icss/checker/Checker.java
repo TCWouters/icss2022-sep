@@ -16,7 +16,6 @@ public class Checker {
 
     public void check(AST ast) {
         variableTypes = new LinkedList<>();
-        // Global scope
         variableTypes.push(new HashMap<>());
         checkStylesheet(ast.root);
         variableTypes.pop();
@@ -46,7 +45,6 @@ public class Checker {
     }
 
     private void checkNextScope(ASTNode node) {
-        // Nieuwe scope voor dit blok
         variableTypes.push(new HashMap<>());
 
         for (ASTNode child : node.getChildren()) {
@@ -59,7 +57,6 @@ public class Checker {
             }
         }
 
-        // Scope verlaten
         variableTypes.pop();
     }
 
@@ -85,46 +82,33 @@ public class Checker {
     private ExpressionType checkExpressionType(ASTNode node) {
         if (node instanceof ColorLiteral) {
             return ExpressionType.COLOR;
-        }
-        if (node instanceof BoolLiteral){
+        } else if (node instanceof BoolLiteral){
             return ExpressionType.BOOL;
-        }
-        if (node instanceof PercentageLiteral){
+        } else if (node instanceof PercentageLiteral){
             return ExpressionType.PERCENTAGE;
-        }
-        if (node instanceof PixelLiteral){
+        } else if (node instanceof PixelLiteral){
             return ExpressionType.PIXEL;
-        }
-        if (node instanceof ScalarLiteral){
+        } else if (node instanceof ScalarLiteral){
             return ExpressionType.SCALAR;
-        }
-
-        if (node instanceof VariableReference) {
+        } else if (node instanceof VariableReference) {
             String varName = ((VariableReference) node).name;
             ExpressionType type = getVariableType(varName);
             if (type == null) {
                 node.setError("Variable '" + varName + "' is not defined in this scope");
             }
             return type;
-        }
-
-        if (node instanceof Operation) {
+        } else if (node instanceof Operation) {
             return checkOperationType(node);
         }
-
         return null;
     }
 
     private boolean checkColor(ExpressionType type) {
         return ExpressionType.COLOR.equals(type);
     }
+
     private void checkDeclaration(Declaration declaration) {
         ExpressionType expressionType = checkExpressionType(declaration.expression);
-
-        if (expressionType == null) {
-            return;
-        }
-
         boolean isColor = checkColor(expressionType);
 
         switch (declaration.property.name) {
