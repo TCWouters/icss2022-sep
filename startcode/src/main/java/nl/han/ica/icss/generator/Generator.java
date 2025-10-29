@@ -41,7 +41,6 @@ public class Generator {
         return result;
     }
 
-
     private String generateDeclaration(Declaration declaration) {
         String value = "";
 
@@ -57,5 +56,4 @@ public class Generator {
 
         return "  " + declaration.property.name + ": " + value + ";\n";
     }
-
 }

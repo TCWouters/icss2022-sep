@@ -100,19 +100,16 @@ public class Checker {
         return null;
     }
 
-    private boolean checkColor(ExpressionType type) {
-        return ExpressionType.COLOR.equals(type);
-    }
-
     private void checkDeclaration(Declaration declaration) {
         ExpressionType expressionType = checkExpressionType(declaration.expression);
-        boolean isColor = checkColor(expressionType);
 
         switch (declaration.property.name) {
             case "width":
             case "height":
-                if (isColor) {
+                if (expressionType == ExpressionType.COLOR) {
                     declaration.setError("Property '" + declaration.property.name + "': color not allowed");
+                } else if (expressionType == ExpressionType.SCALAR) {
+                    declaration.setError("Property '" + declaration.property.name + "': SCALAR not allowed");
                 }
                 break;
             case "color":
@@ -146,6 +143,9 @@ public class Checker {
             if (leftType != rightType) {
                 node.setError("Literals of + or - must be of the same type. Found: "
                         + leftType + " and " + rightType);
+                return null;
+            } else if (leftType == ExpressionType.SCALAR || rightType == ExpressionType.SCALAR) {
+                node.setError("Literals of + or - cannot be SCALAR. Found: " + leftType);
                 return null;
             }
             return leftType;
