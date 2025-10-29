@@ -79,6 +79,6 @@ scalar_literal: SCALAR;
 pixel_literal: PIXELSIZE;
 
 // If statement
-if_clause: IF BOX_BRACKET_OPEN variable_reference BOX_BRACKET_CLOSE OPEN_BRACE (declaration | if_clause)* CLOSE_BRACE (else_clause)?;
+if_clause: IF BOX_BRACKET_OPEN (variable_reference | bool_literal) BOX_BRACKET_CLOSE OPEN_BRACE (declaration | if_clause)* CLOSE_BRACE (else_clause)?;
 
 else_clause: ELSE OPEN_BRACE (declaration | if_clause)* CLOSE_BRACE;

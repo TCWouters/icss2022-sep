@@ -29,13 +29,30 @@ public class Evaluator implements Transform {
             if (child instanceof VariableAssignment) {
                 VariableAssignment assignment = (VariableAssignment) child;
                 Literal value = evaluateExpression(assignment.expression);
-                if (value != null) {
-                    variableValues.peek().put(assignment.name.name, value);
-                }
+                variableValues.peek().put(assignment.name.name, value);
             } else if (child instanceof Stylerule) {
                 applyStylerule((Stylerule) child);
             }
         }
+    }
+
+    private void applyStylerule(Stylerule rule) {
+        ArrayList<ASTNode> newBody = new ArrayList<>();
+        for (ASTNode child : rule.body) {
+            if (child instanceof Declaration) {
+                applyDeclaration((Declaration) child);
+                newBody.add(child);
+            } else if (child instanceof IfClause) {
+                evalIfClause((IfClause) child, newBody);
+            } else {
+                newBody.add(child);
+            }
+        }
+        rule.body = newBody;
+    }
+
+    private void applyDeclaration(Declaration node) {
+        node.expression = evaluateExpression(node.expression);
     }
 
     private Literal getVariableValue(String name) {
@@ -47,23 +64,7 @@ public class Evaluator implements Transform {
         return null;
     }
 
-    private void applyStylerule(Stylerule rule) {
-        ArrayList<ASTNode> newBody = new ArrayList<>();
-
-        for (ASTNode child : rule.body) {
-            if (child instanceof Declaration) {
-                applyDeclaration((Declaration) child);
-                newBody.add(child);
-            } else if (child instanceof IfClause) {
-                resolveAndReplaceIfClause((IfClause) child, newBody);
-            } else {
-                newBody.add(child);
-            }
-        }
-        rule.body = newBody;
-    }
-
-    private void resolveAndReplaceIfClause(IfClause ifClause, ArrayList<ASTNode> newBody) {
+    private void evalIfClause(IfClause ifClause, ArrayList<ASTNode> newBody) {
         Literal condition = evaluateExpression(ifClause.conditionalExpression);
 
         if (condition instanceof BoolLiteral) {
@@ -75,7 +76,7 @@ public class Evaluator implements Transform {
                         applyDeclaration((Declaration) child);
                         newBody.add(child);
                     } else if (child instanceof IfClause) {
-                        resolveAndReplaceIfClause((IfClause) child, newBody);
+                        evalIfClause((IfClause) child, newBody);
                     } else {
                         newBody.add(child);
                     }
@@ -86,17 +87,13 @@ public class Evaluator implements Transform {
                             applyDeclaration((Declaration) child);
                             newBody.add(child);
                         } else if (child instanceof IfClause) {
-                            resolveAndReplaceIfClause((IfClause) child, newBody);
+                            evalIfClause((IfClause) child, newBody);
                         } else {
                             newBody.add(child);
                         }
                     }
             }
         }
-    }
-
-    private void applyDeclaration(Declaration node) {
-        node.expression = evaluateExpression(node.expression);
     }
 
     private Literal evaluateExpression(Expression expression) {
@@ -119,19 +116,15 @@ public class Evaluator implements Transform {
             case "ColorLiteral":
                 return (ColorLiteral) expression;
             case "VariableReference":
-                VariableReference reference = (VariableReference) expression;
-                return getVariableValue(reference.name);
+                return getVariableValue(((VariableReference) expression).name);
             default:
                 return null;
         }
     }
 
-
     private Literal evalSubtractOperation(SubtractOperation expression) {
         Literal leftLit = evaluateExpression(expression.lhs);
         Literal rightLit = evaluateExpression(expression.rhs);
-
-        if (leftLit == null || rightLit == null) return null;
 
         if (leftLit instanceof PixelLiteral && rightLit instanceof PixelLiteral){
             return subtractPixels(leftLit, rightLit);
@@ -147,10 +140,6 @@ public class Evaluator implements Transform {
         Literal leftLit = evaluateExpression(expression.lhs);
         Literal rightLit = evaluateExpression(expression.rhs);
 
-
-        if (leftLit == null || rightLit == null){
-            return null;
-        }
 
         if (leftLit instanceof ScalarLiteral && rightLit instanceof PixelLiteral) {
             return multiplyPixels(rightLit, leftLit);
@@ -168,10 +157,6 @@ public class Evaluator implements Transform {
         Literal leftLit = evaluateExpression(expression.lhs);
         Literal rightLit = evaluateExpression(expression.rhs);
 
-        if (leftLit == null || rightLit == null) {
-            return null;
-        }
-
         if (leftLit instanceof PixelLiteral && rightLit instanceof PixelLiteral){
             return addPixels(leftLit, rightLit);
         } else if (leftLit instanceof PercentageLiteral && rightLit instanceof PercentageLiteral){
@@ -180,7 +165,6 @@ public class Evaluator implements Transform {
 
         return null;
     }
-
 
     private Literal multiplyPixels(Literal leftLit, Literal rightLit) {
         PixelLiteral pixel = (PixelLiteral) leftLit;

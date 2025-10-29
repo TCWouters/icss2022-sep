@@ -60,13 +60,10 @@ public class Checker {
         variableTypes.pop();
     }
 
-
     private void checkVariableAssignment(VariableAssignment variableAssignment) {
         String name = variableAssignment.name.name;
         ExpressionType type = checkExpressionType(variableAssignment.expression);
-        if (name != null) {
-            variableTypes.peek().put(name, type);
-        }
+        variableTypes.peek().put(name, type);
     }
 
 
@@ -130,7 +127,6 @@ public class Checker {
         }
     }
 
-
     private ExpressionType checkOperationType(ASTNode node) {
         if (!(node instanceof Operation)) return null;
 
@@ -145,9 +141,6 @@ public class Checker {
         ExpressionType leftType = checkExpressionType(leftNode);
         ExpressionType rightType = checkExpressionType(rightNode);
 
-        if (leftType == null || rightType == null) {
-            return null;
-        }
 
         if (node instanceof AddOperation || node instanceof SubtractOperation) {
             if (leftType != rightType) {
