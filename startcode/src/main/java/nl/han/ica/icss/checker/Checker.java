@@ -38,8 +38,8 @@ public class Checker {
     private void checkIfClause(IfClause ifClause) {
         checkNextScope(ifClause);
 
-        ExpressionType expressionType = checkExpressionType(ifClause.conditionalExpression);
 
+        ExpressionType expressionType = checkExpressionType(ifClause.conditionalExpression);
         if (expressionType != ExpressionType.BOOL) {
             ifClause.setError("If condition must be of type BOOL. Found: " + expressionType);
         }
@@ -70,8 +70,9 @@ public class Checker {
 
     private ExpressionType getVariableType(String name) {
         for (HashMap<String, ExpressionType> scope : variableTypes) {
-            if (scope.containsKey(name)) {
-                return scope.get(name);
+            ExpressionType expressionType = scope.get(name);
+            if (expressionType != null) {
+                return expressionType; // found in current scope
             }
         }
         return null;
@@ -127,7 +128,7 @@ public class Checker {
 
     private ExpressionType checkOperationType(ASTNode node) {
         if (!(node instanceof Operation)) return null;
-
+        // check amount of literals
         if (node.getChildren().size() != 2) {
             node.setError("Operation must have exactly two literals.");
             return null;
@@ -139,7 +140,7 @@ public class Checker {
         ExpressionType leftType = checkExpressionType(leftNode);
         ExpressionType rightType = checkExpressionType(rightNode);
 
-
+        // check if types are valid
         if (node instanceof AddOperation || node instanceof SubtractOperation) {
             if (leftType != rightType) {
                 node.setError("Literals of + or - must be of the same type. Found: "
