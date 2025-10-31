@@ -39,6 +39,7 @@ public class Checker {
         checkNextScope(ifClause);
 
         ExpressionType expressionType = checkExpressionType(ifClause.conditionalExpression);
+
         if (expressionType != ExpressionType.BOOL) {
             ifClause.setError("If condition must be of type BOOL. Found: " + expressionType);
         }

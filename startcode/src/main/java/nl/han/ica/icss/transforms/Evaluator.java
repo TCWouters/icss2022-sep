@@ -6,13 +6,11 @@ import nl.han.ica.icss.ast.operations.AddOperation;
 import nl.han.ica.icss.ast.operations.MultiplyOperation;
 import nl.han.ica.icss.ast.operations.SubtractOperation;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.*;
 
 public class Evaluator implements Transform {
 
-    private LinkedList<HashMap<String, Literal>> variableValues;
+    private final LinkedList<Map<String, Literal>> variableValues;
 
     public Evaluator() {
         variableValues = new LinkedList<>();
@@ -38,7 +36,40 @@ public class Evaluator implements Transform {
 
     private void applyStylerule(Stylerule rule) {
         ArrayList<ASTNode> newBody = new ArrayList<>();
-        for (ASTNode child : rule.body) {
+        processBody(rule.body, newBody);
+        rule.body = newBody;
+    }
+
+    private void applyDeclaration(Declaration node) {
+        node.expression = evaluateExpression(node.expression);
+    }
+
+    private Literal getVariableValue(String name) {
+        for (Map<String, Literal> scope : variableValues) {
+            Literal literal = scope.get(name);
+            if (literal != null) {
+                return literal; // found in current scope
+            }
+        }
+        return null;
+    }
+
+    private void evalIfClause(IfClause ifClause, List<ASTNode> newBody) {
+        Literal condition = evaluateExpression(ifClause.conditionalExpression);
+
+        if (condition instanceof BoolLiteral) {
+            BoolLiteral boolCondition = (BoolLiteral) condition;
+
+            if (boolCondition.value) {
+                processBody(ifClause.body, newBody);
+            } else if (ifClause.elseClause != null) {
+                processBody(ifClause.elseClause.body, newBody);
+            }
+        }
+    }
+
+    private void processBody(List<ASTNode> body, List<ASTNode> newBody) {
+        for (ASTNode child : body) {
             if (child instanceof Declaration) {
                 applyDeclaration((Declaration) child);
                 newBody.add(child);
@@ -48,56 +79,10 @@ public class Evaluator implements Transform {
                 newBody.add(child);
             }
         }
-        rule.body = newBody;
     }
 
-    private void applyDeclaration(Declaration node) {
-        node.expression = evaluateExpression(node.expression);
-    }
-
-    private Literal getVariableValue(String name) {
-        for (HashMap<String, Literal> scope : variableValues) {
-            if (scope.containsKey(name)) {
-                return scope.get(name);
-            }
-        }
-        return null;
-    }
-
-    private void evalIfClause(IfClause ifClause, ArrayList<ASTNode> newBody) {
-        Literal condition = evaluateExpression(ifClause.conditionalExpression);
-
-        if (condition instanceof BoolLiteral) {
-            BoolLiteral boolCondition = (BoolLiteral) condition;
-
-            if (boolCondition.value) {
-                for (ASTNode child : ifClause.body) {
-                    if (child instanceof Declaration) {
-                        applyDeclaration((Declaration) child);
-                        newBody.add(child);
-                    } else if (child instanceof IfClause) {
-                        evalIfClause((IfClause) child, newBody);
-                    } else {
-                        newBody.add(child);
-                    }
-                }
-            } else if (ifClause.elseClause != null) {
-                    for (ASTNode child : ifClause.elseClause.body) {
-                        if (child instanceof Declaration) {
-                            applyDeclaration((Declaration) child);
-                            newBody.add(child);
-                        } else if (child instanceof IfClause) {
-                            evalIfClause((IfClause) child, newBody);
-                        } else {
-                            newBody.add(child);
-                        }
-                    }
-            }
-        }
-    }
 
     private Literal evaluateExpression(Expression expression) {
-
         switch (expression.getClass().getSimpleName()) {
             case "PixelLiteral":
                 return (PixelLiteral) expression;
@@ -122,6 +107,7 @@ public class Evaluator implements Transform {
         }
     }
 
+    // bekijken welk type van literal het is en de juiste methode aanroepen.
     private Literal evalSubtractOperation(SubtractOperation expression) {
         Literal leftLit = evaluateExpression(expression.lhs);
         Literal rightLit = evaluateExpression(expression.rhs);
@@ -166,6 +152,7 @@ public class Evaluator implements Transform {
         return null;
     }
 
+    // methodes voor de operations.
     private Literal multiplyPixels(Literal leftLit, Literal rightLit) {
         PixelLiteral pixel = (PixelLiteral) leftLit;
         ScalarLiteral scalar = (ScalarLiteral) rightLit;
